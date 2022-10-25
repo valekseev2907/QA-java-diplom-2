@@ -17,7 +17,7 @@ public class OrderClient extends Specification {
                 .when()
                 .get(INGRIDIENTS_PATH)
                 .then()
-                .spec(Specification.responseSpecOK200());
+                .log().all();
     }
 
     @Step("Создание заказа")
@@ -30,7 +30,7 @@ public class OrderClient extends Specification {
                 .then().log().all();
     }
 
-    @Step("Список заказов пользователя")
+    @Step("Получение списка заказов пользователя")
     public ValidatableResponse userOrdersList (String token){
         return requestSpec()
                 .header("Authorization", token)

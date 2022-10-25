@@ -1,9 +1,8 @@
 import io.qameta.allure.junit4.DisplayName;
+import io.restassured.response.ValidatableResponse;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import specifications.Response;
 import specifications.Specification;
 import user.User;
 import user.UserClient;
@@ -15,81 +14,69 @@ public class PostUserTests {
 
     User user;
     UserClient userClient;
+    Specification spec;
 
     @Before
     public void setup() {
     user = User.getRandomUserData();
     userClient = new UserClient();
+    spec = new Specification();
     }
 
     @Test
     @DisplayName("Попытка создать уникального пользователя должна завершиться успешно")
     public void attemptToCreateUniqueUserShouldSucceed() {
-        boolean isSucceed = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().path("success");
-        assertTrue("В параметре ожитается значение - true",isSucceed);
+        ValidatableResponse response = userClient.create(user);
+
+        assertEquals("status code is not valid", 200, spec.getStatusCodeFrom(response));
+        assertTrue("expected value - true", spec.isSucceedStatementFrom(response));
     }
 
     @Test
     @DisplayName("Попытка создать пользователя, который уже зарегистрирован должна завершиться ошибкой")
     public void attemptToCreateUserWithExistedLoginShouldReturnError() {
-        boolean isSucceed = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().path("success");
-        assertTrue("В параметре ожитается значение - true",isSucceed);
+        userClient.create(user);
+        User existedUser = User.getDataFrom(user);
+        ValidatableResponse response = userClient.create(existedUser);
 
-        User existedUser = User.getDatafrom(user);
-        Response response = userClient.create(existedUser)
-                .spec(Specification.responseSpecForbidden403())
-                .extract().as(Response.class);
-        assertFalse("В параметре ожитается значение - false", response.isSuccess());
-        assertEquals("User already exists", response.getMessage());
+        assertEquals("status code is not valid", 403, spec.getStatusCodeFrom(response));
+        assertFalse("expected value - false", spec.isSucceedStatementFrom(response));
+        assertEquals("User already exists", spec.getMessageFrom(response));
     }
 
     @Test
     @DisplayName("Попытка создать пользователя и не заполнить одно из обязательных полей должна завершиться ошибкой")
     public void attemptToCreateUserWithoutMandatoryFieldShouldReturnError() {
         user.setEmail(null);
+        ValidatableResponse response = userClient.create(user);
 
-        Response response = userClient.create(user)
-                .spec(Specification.responseSpecForbidden403())
-                .extract().as(Response.class);
-        assertFalse("В параметре ожитается значение - false", response.isSuccess());
-        assertEquals("Email, password and name are required fields", response.getMessage());
+        assertEquals("status code is not valid", 403, spec.getStatusCodeFrom(response));
+        assertFalse("expected value - false", spec.isSucceedStatementFrom(response));
+        assertEquals("Email, password and name are required fields", spec.getMessageFrom(response));
     }
 
     @Test
     @DisplayName("Попытка авторизации под существующим пользователем должна завершиться успешно")
     public void attemptToAuthorizeAsExistedUserShouldSucceed() {
-        boolean isSucceed = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().path("success");
-        assertTrue("В параметре ожитается значение - true",isSucceed);
-
+        userClient.create(user);
         UserCredentials creds = UserCredentials.from(user);
-        boolean response = userClient.login(creds)
-                .spec(Specification.responseSpecOK200())
-                .extract().path("success");
-        assertTrue("В параметре ожитается значение - true", response);
+        ValidatableResponse response = userClient.login(creds);
+
+        assertEquals("status code is not valid", 200, spec.getStatusCodeFrom(response));
+        assertTrue("expected value - true", spec.isSucceedStatementFrom(response));
     }
 
     @Test
     @DisplayName("Попытка авторизации с неверным логином и паролем должна завершиться ошибкой")
     public void attemptToAuthorizeWithInvalidLoginAndPasswordShouldReturnError() {
-        boolean isSucceed = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().path("success");
-        assertTrue("В параметре ожитается значение - true",isSucceed);
-
+        userClient.create(user);
         UserCredentials creds = UserCredentials.from(user);
         creds.setEmail(RandomStringUtils.randomAlphanumeric(10));
         creds.setPassword(RandomStringUtils.randomAlphanumeric(10));
+        ValidatableResponse response = userClient.login(creds);
 
-        Response response = userClient.login(creds)
-                .spec(Specification.responseSpecUnauthorized401())
-                .extract().as(Response.class);
-        assertFalse("В параметре ожитается значение - false", response.isSuccess());
-        assertEquals("email or password are incorrect", response.getMessage());
+        assertEquals("status code is not valid", 401, spec.getStatusCodeFrom(response));
+        assertFalse("expected value - false", spec.isSucceedStatementFrom(response));
+        assertEquals("email or password are incorrect", spec.getMessageFrom(response));
     }
 }

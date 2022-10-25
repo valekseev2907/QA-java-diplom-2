@@ -1,11 +1,9 @@
 import io.qameta.allure.junit4.DisplayName;
 import io.restassured.response.ValidatableResponse;
-import jdk.jfr.Description;
 import order.Ingredients;
 import order.OrderClient;
 import org.junit.Before;
 import org.junit.Test;
-import specifications.Response;
 import specifications.Specification;
 import user.User;
 import user.UserClient;
@@ -16,6 +14,7 @@ public class PostOrderTests {
     UserClient userClient;
     Ingredients ingredients;
     OrderClient orderClient;
+    Specification spec;
 
     @Before
     public void setup() {
@@ -23,60 +22,50 @@ public class PostOrderTests {
         ingredients = Ingredients.getRandomBurger();
         userClient = new UserClient();
         orderClient = new OrderClient();
+        spec = new Specification();
     }
 
     @Test
-    @DisplayName("Попытка созданиязаказа для зарегистрированного пользователя должна завершиться успешно")
+    @DisplayName("Попытка создания заказа для зарегистрированного пользователя должна завершиться успешно")
     public void attemptToCreateOrderByAuthorizedUserShouldSucceed() {
-        Response registrationResponse = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().as(Response.class);
-        assertTrue("В параметре ожитается значение - true",registrationResponse.isSuccess());
+        ValidatableResponse registrationResponse = userClient.create(user);
+        String token = spec.getTokenFrom(registrationResponse);
+        ValidatableResponse orderResponse = orderClient.createOrder(token, ingredients);
 
-        ValidatableResponse orderResponse = orderClient.createOrder(registrationResponse.getAccessToken(), ingredients)
-                .spec(Specification.responseSpecOK200());
-        int orderNumber = orderResponse.extract().path("order.number");
-        boolean isSucceed = orderResponse.extract().path("success");
-        assertTrue("В параметре ожитается значение - true", isSucceed);
-        assertNotEquals(0, orderNumber);
+        assertEquals("status code is not valid", 200, spec.getStatusCodeFrom(orderResponse));
+        assertTrue("expected value - true", spec.isSucceedStatementFrom(orderResponse));
+        assertNotEquals(0, spec.getOrderNumberFrom(orderResponse));
     }
 
     @Test
     @DisplayName("Попытка создания заказа для незарегистрированного пользователя должна завершиться успешно")
     public void attemptToCreateOrderByUnauthorizedUserShouldSucceed() {
-        ValidatableResponse orderResponse = orderClient.createOrder("", ingredients)
-                .spec(Specification.responseSpecOK200());
-        int orderNumber = orderResponse.extract().path("order.number");
-        boolean isSucceed = orderResponse.extract().path("success");
-        assertTrue("В параметре ожитается значение - true", isSucceed);
-        assertNotEquals(0, orderNumber);
+        ValidatableResponse orderResponse = orderClient.createOrder("", ingredients);
+
+        assertEquals("status code is not valid", 200, spec.getStatusCodeFrom(orderResponse));
+        assertTrue("expected value - true", spec.isSucceedStatementFrom(orderResponse));
+        assertNotEquals(0, spec.getOrderNumberFrom(orderResponse));
     }
 
     @Test
     @DisplayName("Попытка создания заказа без списка ингредиентов должна завершиться ошибкой")
     public void attemptToCreateOrderWithoutIngredientsShouldReturnError() {
-        Response registrationResponse = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().as(Response.class);
-        assertTrue("В параметре ожитается значение - true",registrationResponse.isSuccess());
+        ValidatableResponse registrationResponse = userClient.create(user);
+        String token = spec.getTokenFrom(registrationResponse);
+        ValidatableResponse orderResponse = orderClient.createOrder(token, Ingredients.getNullIngredients());
 
-        ValidatableResponse orderResponse = orderClient.createOrder(registrationResponse.getAccessToken(), Ingredients.getNullIngredients())
-                .spec(Specification.responseSpecBadRequest400());
-        String message = orderResponse.extract().path("message");
-        boolean isSucceed = orderResponse.extract().path("success");
-        assertFalse("В параметре ожитается значение - false", isSucceed);
-        assertEquals("Ingredient ids must be provided", message);
+        assertEquals("status code is not valid", 400, spec.getStatusCodeFrom(orderResponse));
+        assertFalse("expected value - false", spec.isSucceedStatementFrom(orderResponse));
+        assertEquals("Ingredient ids must be provided", spec.getMessageFrom(orderResponse));
     }
 
     @Test
     @DisplayName("Попытка создания заказа с некорректными ингредиентами должна завершиться ошибкой")
     public void attemptToCreateOrderWithIncorrectIngredientsShouldReturnError() {
-        Response registrationResponse = userClient.create(user)
-                .spec(Specification.responseSpecOK200())
-                .extract().as(Response.class);
-        assertTrue("В параметре ожитается значение - true",registrationResponse.isSuccess());
+        ValidatableResponse registrationResponse = userClient.create(user);
+        String token = spec.getTokenFrom(registrationResponse);
+        ValidatableResponse orderResponse = orderClient.createOrder(token, Ingredients.getIncorrectIngredients());
 
-        orderClient.createOrder(registrationResponse.getAccessToken(), Ingredients.getIncorrectIngredients())
-                .spec(Specification.responseSpecInternalServerError500());
+        assertEquals("status code is not valid", 500, spec.getStatusCodeFrom(orderResponse));
     }
 }

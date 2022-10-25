@@ -1,10 +1,13 @@
 package specifications;
 
 import config.Config;
-import io.restassured.builder.ResponseSpecBuilder;
+import io.qameta.allure.Step;
 import io.restassured.http.ContentType;
+import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
-import io.restassured.specification.ResponseSpecification;
+
+import java.util.List;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 
@@ -15,33 +18,42 @@ public class Specification {
                 .contentType(ContentType.JSON);
     }
 
-    public static ResponseSpecification responseSpecOK200() {
-        return new ResponseSpecBuilder()
-                .expectStatusCode(200)
-                .build();
+    @Step("Получение кода ответа")
+    public int getStatusCodeFrom(ValidatableResponse response) {
+        return response
+                .extract()
+                .statusCode();
     }
 
-    public static ResponseSpecification responseSpecBadRequest400() {
-        return new ResponseSpecBuilder()
-                .expectStatusCode(400)
-                .build();
+    @Step("Получение статуса запроса")
+    public boolean isSucceedStatementFrom(ValidatableResponse response) {
+        return response
+                .extract()
+                .path("success");
     }
 
-    public static ResponseSpecification responseSpecUnauthorized401() {
-        return new ResponseSpecBuilder()
-                .expectStatusCode(401)
-                .build();
+    @Step("Получение сообщения об ошибке")
+    public String getMessageFrom(ValidatableResponse response) {
+        return response
+                .extract()
+                .path("message");
     }
 
-    public static ResponseSpecification responseSpecForbidden403() {
-        return new ResponseSpecBuilder()
-                .expectStatusCode(403)
-                .build();
+    @Step("Получение токена")
+    public String getTokenFrom(ValidatableResponse response) {
+        return response
+                .extract().path("accessToken");
     }
 
-    public static ResponseSpecification responseSpecInternalServerError500() {
-        return new ResponseSpecBuilder()
-                .expectStatusCode(500)
-                .build();
+    @Step("Получение номера заказа")
+    public int getOrderNumberFrom(ValidatableResponse response) {
+        return response
+                .extract().path("order.number");
+    }
+
+    @Step("Получение списка заказов")
+    public List<Map<String, Object>> getUserOrdersFrom(ValidatableResponse response) {
+        return response
+                .extract().path("orders");
     }
 }

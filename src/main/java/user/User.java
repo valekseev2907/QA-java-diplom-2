@@ -19,7 +19,7 @@ public class User {
 
     static Faker data = new Faker();
 
-    public static User getDatafrom(User user) {
+    public static User getDataFrom(User user) {
         return new User(user.getEmail(), user.getPassword(), user.getName());
     }
 
